@@ -52,16 +52,33 @@ export interface FlightFormData {
   pilotId?: string;           // 关联的飞手资质ID
   pilotName: string;
   pilotPhone: string;
-  uavId?: string;             // 关联的无人机资质ID
+  uavId?: string;             // 关联 of the UAV qualification ID
   uavModel: string;
-  uavNumber: string;          // 序列号/注册码
-  uavWeight: number;          // 重量(kg)
+  uavNumber: string;          // Serial number/registration code
+  uavWeight: number;          // Weight (kg)
   
   // 起飞确认/降落报告额外字段
   actualTakeoffTime?: string;
   actualLandingTime?: string;
   missionStatus?: string;
   abnormalEvents?: string;
+
+  // 通航空域申请额外字段
+  applicantUnit?: string;      // 申请单位
+  airspaceUsage?: string;      // 空域使用用途
+  startTime?: string;          // 开始时间
+  endTime?: string;            // 结束时间
+  flightHeightAGL?: number;    // 飞行高度 (真高)
+  flightHeightMSL?: number;    // 飞行高度 (海拔)
+  securityPlan?: string;       // 保障方案
+  coordinates?: Coordinate[];  // 坐标点集合
+}
+
+export interface GA_ApprovalNode {
+  name: string;               // 节点名称 (如: 飞行服务站A)
+  status: 'pending' | 'approved' | 'rejected' | 'none';
+  time?: string;
+  comment?: string;
 }
 
 export interface FlightApplication {
@@ -75,6 +92,8 @@ export interface FlightApplication {
   // 关联字段
   relatedApplyId?: string;   // 起飞确认关联的申请ID
   relatedTakeoffId?: string; // 降落报告关联的起飞ID
+  // 通航审批节点
+  approvalNodes?: GA_ApprovalNode[];
 }
 
 export type CertView = 'categories' | 'instances' | 'detail' | 'form';

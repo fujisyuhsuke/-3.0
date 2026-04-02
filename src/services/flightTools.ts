@@ -1,4 +1,4 @@
-import { Coordinate, FSSInfo } from '../types';
+import { Coordinate, FSSInfo, FlightApplication, UserType } from '../types';
 
 /**
  * 飞服站判断逻辑 (FSS Judge & Router)
@@ -117,4 +117,46 @@ export const getPreFilledData = (userType: 'individual' | 'enterprise') => {
     orgCode: '91440101MA59XXXXXX',
     gaLicense: 'GA-2024-088'
   };
+};
+
+/**
+ * 获取待提交降落报告的飞行活动 (Awaiting Landing Report Fetcher)
+ */
+export const getFlightsAwaitingLandingReport = (
+  applications: FlightApplication[],
+  userType: UserType
+) => {
+  // 1. 查找当前用户类型下所有处于“飞行中”状态的起飞记录
+  const activeTakeoffs = applications.filter(
+    app => app.businessType === 'uav-takeoff' && app.status === 'active' && app.userType === userType
+  );
+
+  // 2. 过滤掉已经提交过降落报告的记录
+  const awaitingFlights = activeTakeoffs.filter(takeoff => {
+    const hasLandingReport = applications.some(
+      app => app.businessType === 'uav-landing' && app.relatedTakeoffId === takeoff.id
+    );
+    return !hasLandingReport;
+  }).map(takeoff => {
+    // 3. 关联原始飞行活动申请
+    const originalApp = applications.find(app => app.id === takeoff.relatedApplyId);
+    
+    return {
+      takeoff_confirm_id: takeoff.id,
+      takeoff_time: takeoff.submittedAt,
+      actual_takeoff_point: `${takeoff.locationInfo.coordinate.lng.toFixed(6)}, ${takeoff.locationInfo.coordinate.lat.toFixed(6)}`,
+      flight_application_id: originalApp?.id || 'N/A',
+      flight_purpose: originalApp?.formData.flightPurpose || 'N/A',
+      airspace: originalApp?.formData.airspaceDescription || takeoff.locationInfo.address,
+      planned_landing_point: originalApp?.formData.landingPoint || 'N/A',
+      flight_duration_plan: `${originalApp?.formData.flightDuration || 0}分钟`,
+      status: "已起飞待降落报告",
+      // 用于超时计算的额外信息
+      planned_duration_minutes: originalApp?.formData.flightDuration || 0,
+      originalApp: originalApp,
+      takeoffRecord: takeoff
+    };
+  });
+
+  return { awaiting_flights: awaitingFlights };
 };

@@ -50,7 +50,12 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
             <div class="flex items-center gap-2 mb-1">
-              <!-- Removed application type and status spans -->
+              <span :class="['px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider', getStatusClass(app.status)]">
+                {{ getStatusText(app.status) }}
+              </span>
+              <span v-if="app.formData.applicationType" class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase tracking-wider">
+                {{ getApplicationTypeText(app.formData.applicationType) }}
+              </span>
             </div>
             <p class="text-xs text-gray-500">
               申请编号：{{ app.id }} | 提交时间：{{ formatDate(app.submittedAt) }}
@@ -83,21 +88,68 @@
           </div>
         </div>
 
+        <!-- GA Approval Nodes Timeline -->
+        <div v-if="app.businessType === 'ga-airspace' && app.approvalNodes" class="mb-6 p-4 bg-indigo-50/30 rounded-2xl border border-indigo-100/50">
+          <div class="flex items-center gap-2 mb-4">
+            <Clock :size="14" class="text-indigo-600" />
+            <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">多方并行审批进度</span>
+          </div>
+          <div class="flex flex-wrap gap-y-4 gap-x-2">
+            <div v-for="(node, idx) in app.approvalNodes" :key="idx" class="flex items-center gap-2">
+              <div class="flex flex-col items-center">
+                <div :class="['w-6 h-6 rounded-full flex items-center justify-center transition-all', 
+                  node.status === 'approved' ? 'bg-emerald-500 text-white' : 
+                  node.status === 'processing' ? 'bg-indigo-600 text-white animate-pulse' : 
+                  node.status === 'rejected' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-400']">
+                  <Check v-if="node.status === 'approved'" :size="12" />
+                  <Clock v-else-if="node.status === 'processing'" :size="12" />
+                  <AlertCircle v-else-if="node.status === 'rejected'" :size="12" />
+                  <span v-else class="text-[10px] font-bold">{{ idx + 1 }}</span>
+                </div>
+              </div>
+              <div class="flex flex-col">
+                <span :class="['text-[10px] font-bold', node.status === 'pending' ? 'text-gray-400' : 'text-gray-700']">{{ node.name }}</span>
+                <span v-if="node.time" class="text-[8px] text-gray-400">{{ formatDate(node.time) }}</span>
+              </div>
+              <div v-if="idx < app.approvalNodes.length - 1" class="w-4 h-px bg-gray-200 mx-1"></div>
+            </div>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div class="p-3 bg-gray-50 rounded-xl">
-            <p class="text-xs font-medium text-gray-500 mb-1">起飞点</p>
-            <p class="text-sm font-bold text-gray-800">{{ app.locationInfo.address }}</p>
+            <p class="text-xs font-medium text-gray-500 mb-1">
+              {{ app.businessType === 'ga-airspace' ? '申请单位' : '起飞点' }}
+            </p>
+            <div class="flex items-center gap-2">
+              <Building2 v-if="app.businessType === 'ga-airspace'" :size="14" class="text-indigo-600" />
+              <MapPin v-else :size="14" class="text-blue-600" />
+              <p class="text-sm font-bold text-gray-800">{{ app.businessType === 'ga-airspace' ? app.formData.applicantUnit : app.locationInfo.address }}</p>
+            </div>
             <p class="text-[10px] text-gray-500 mt-1">{{ app.locationInfo.fss.name }}</p>
           </div>
           <div class="p-3 bg-gray-50 rounded-xl">
             <p class="text-xs font-medium text-gray-500 mb-1">飞行时间</p>
-            <p class="text-sm font-bold text-gray-800">{{ app.formData.flightDate }} {{ app.formData.takeoffTime }}</p>
-            <p class="text-[10px] text-gray-500 mt-1">预计时长：{{ app.formData.flightDuration }}分钟</p>
+            <p class="text-sm font-bold text-gray-800">
+              {{ app.businessType === 'ga-airspace' ? formatDate(app.formData.startTime) : (app.formData.flightDate + ' ' + app.formData.takeoffTime) }}
+            </p>
+            <p class="text-[10px] text-gray-500 mt-1">
+              {{ app.businessType === 'ga-airspace' ? '结束：' + formatDate(app.formData.endTime) : '预计时长：' + app.formData.flightDuration + '分钟' }}
+            </p>
           </div>
           <div class="p-3 bg-gray-50 rounded-xl">
-            <p class="text-xs font-medium text-gray-500 mb-1">无人机信息</p>
-            <p class="text-sm font-bold text-gray-800">{{ app.formData.uavModel }}</p>
-            <p class="text-[10px] text-gray-500 mt-1">编号：{{ app.formData.uavNumber }}</p>
+            <p class="text-xs font-medium text-gray-500 mb-1">
+              {{ app.businessType === 'ga-airspace' ? '空域用途' : '无人机信息' }}
+            </p>
+            <div class="flex items-center gap-2">
+              <Plane v-if="app.businessType === 'ga-airspace'" :size="14" class="text-indigo-600" />
+              <p class="text-sm font-bold text-gray-800">
+                {{ app.businessType === 'ga-airspace' ? getAirspaceUsageText(app.formData.airspaceUsage) : app.formData.uavModel }}
+              </p>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-1">
+              {{ app.businessType === 'ga-airspace' ? '高度：' + app.formData.flightHeightAGL + 'm (AGL)' : '编号：' + app.formData.uavNumber }}
+            </p>
           </div>
         </div>
       </div>
@@ -120,7 +172,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { FileText, ChevronLeft, ChevronRight, ArrowLeft, Navigation, CheckCircle } from 'lucide-vue-next';
+import { FileText, ChevronLeft, ChevronRight, ArrowLeft, Navigation, CheckCircle, Check, Clock, AlertCircle, Building2, Plane, MapPin } from 'lucide-vue-next';
 import { FlightApplication, UserType, BusinessType, ApplicationStatus } from '../types';
 
 const props = defineProps<{
@@ -202,6 +254,17 @@ const getStatusClass = (status: ApplicationStatus) => {
     case 'rejected': return 'bg-red-100 text-red-800';
     default: return 'bg-gray-100 text-gray-800';
   }
+};
+
+const getAirspaceUsageText = (usage: string) => {
+  const usageMap: Record<string, string> = {
+    training: '飞行训练',
+    survey: '航空摄影/测绘',
+    agriculture: '农林喷洒',
+    emergency: '应急救援',
+    scientific: '科学实验'
+  };
+  return usageMap[usage] || usage;
 };
 
 const formatDate = (dateString: string) => {

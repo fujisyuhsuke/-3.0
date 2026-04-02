@@ -11,7 +11,7 @@
             <ChevronDown :size="10" />
           </div>
           <div class="flex items-center gap-4">
-            <span class="text-gray-400">广东省低空飞行综合管理平台</span>
+            <span class="text-gray-400">广东省智能网联平台</span>
           </div>
         </div>
         <div class="flex items-center gap-4">
@@ -50,8 +50,8 @@
             <img src="https://picsum.photos/seed/guangdong-uav/100/100" alt="Logo" class="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
           <div>
-            <h1 class="text-xl font-bold text-gray-800 tracking-tight">广东省低空飞行综合管理平台</h1>
-            <p class="text-[10px] text-gray-400 uppercase tracking-widest">Guangdong Low-altitude Flight Management Platform</p>
+            <h1 class="text-xl font-bold text-gray-800 tracking-tight">广东省智能网联平台</h1>
+            <p class="text-[10px] text-gray-400 uppercase tracking-widest">Guangdong Intelligent Connected Platform</p>
           </div>
         </div>
       </header>
@@ -75,8 +75,8 @@
 
       <!-- Platform Content Area -->
       <main class="flex-1 bg-gray-50 overflow-hidden">
-        <!-- 全屏显示模式（飞行申请办理 & 起飞确认办理） -->
-        <div v-if="currentNav === '飞行申请办理' || currentNav === '起飞确认办理'" class="h-full">
+        <!-- 全屏显示模式（飞行申请办理、起飞确认办理、降落报告办理、通航空域申请办理） -->
+        <div v-if="currentNav === '飞行申请办理' || currentNav === '起飞确认办理' || currentNav === '降落报告办理' || currentNav === '通航空域申请办理'" class="h-full">
           <!-- 飞行申请流程 -->
           <template v-if="currentNav === '飞行申请办理'">
             <!-- 地图选择步骤 -->
@@ -106,6 +106,26 @@
             @back="currentNav = '飞行业务申报'"
             @submit="handleTakeoffFlowSubmit"
             @redirect="handleTakeoffFlowRedirect"
+          />
+
+          <!-- 降落报告流程 -->
+          <LandingReportFlow
+            v-else-if="currentNav === '降落报告办理'"
+            :applications="flightApplications"
+            :userType="userType"
+            :initialTakeoffRecord="selectedTakeoffForLanding"
+            @back="currentNav = '飞行业务申报'"
+            @submit="handleLandingConfirm"
+          />
+
+          <!-- 通航空域申请流程 -->
+          <GA_AirspaceFlow
+            v-else-if="currentNav === '通航空域申请办理'"
+            :applications="flightApplications"
+            :userType="userType"
+            :certInstances="certInstances"
+            @back="currentNav = '飞行业务申报'"
+            @submit="handleGA_AirspaceSubmit"
           />
         </div>
         
@@ -138,6 +158,7 @@
               :show-records="declarationView === 'records'"
               :default-business-type="recordBusinessType"
               @request-uav-apply="handleOpenFlightFlow"
+              @request-ga-airspace="handleOpenGA_AirspaceFlow"
               @view-application="handleViewApplication"
               @copy-application="handleCopyApplication"
               @request-takeoff="handleRequestTakeoff"
@@ -156,15 +177,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Takeoff Application Selector Modal -->
-        <TakeoffApplicationSelector 
-          v-if="showTakeoffSelector"
-          :applications="flightApplications"
-          :userType="userType"
-          @close="showTakeoffSelector = false"
-          @confirm="handleTakeoffConfirm"
-        />
 
         <!-- Application Details Modal -->
         <FlightApplicationDetails
@@ -218,7 +230,9 @@ import Dashboard from './components/Dashboard.vue';
 import NotificationCenter, { Notification } from './components/NotificationCenter.vue';
 import TakeoffConfirmationFlow from './components/TakeoffConfirmationFlow.vue';
 import FlightApplicationDetails from './components/FlightApplicationDetails.vue';
-import { CertView, CertInstance, LocationSelection, FlightApplication, ApplicationStatus, BusinessType } from './types';
+import LandingReportFlow from './components/LandingReportFlow.vue';
+import GA_AirspaceFlow from './components/GA_AirspaceFlow.vue';
+import { CertView, CertInstance, LocationSelection, FlightApplication, ApplicationStatus, BusinessType, GA_ApprovalNode } from './types';
 
 // Auth State
 const isLoggedIn = ref(false);
@@ -328,14 +342,58 @@ const flightApplications = ref<FlightApplication[]>([
 ]);
 
 // Takeoff Confirmation State
-const showTakeoffSelector = ref(false);
+const showLandingSelector = ref(false);
+const showLandingForm = ref(false);
+const selectedTakeoffForLanding = ref<FlightApplication | null>(null);
 const selectedApprovedApp = ref<FlightApplication | null>(null);
 
 // Certification State
 const certView = ref<CertView>('categories');
 const selectedCategory = ref<string | null>(null);
 const selectedInstanceId = ref<string | null>(null);
-const certInstances = ref<CertInstance[]>([]);
+const certInstances = ref<CertInstance[]>([
+  // Mock GA Certs for testing
+  {
+    id: 'GA-CORP-001',
+    category: '通航飞行企业认证',
+    status: 'approved',
+    createdAt: new Date().toISOString(),
+    data: {
+      companyName: '广东某航测技术有限公司',
+      opQualification: 'GA-LIC-2024-888',
+      creditCode: '91440101MA59XXXXXX',
+      expiryDate: '2028-12-31',
+      opScope: '航空摄影、电力巡检、地理信息测绘'
+    }
+  },
+  {
+    id: 'GA-AC-001',
+    category: '通航飞行器认证',
+    status: 'approved',
+    createdAt: new Date().toISOString(),
+    data: {
+      aircraftType: '塞斯纳 172',
+      callSign: 'B-1234',
+      regNumber: 'B-1234',
+      airworthinessId: 'AW-2024-001',
+      ownerOrg: '广东某航测技术有限公司'
+    }
+  },
+  {
+    id: 'GA-PILOT-001',
+    category: '通航飞行员认证',
+    status: 'approved',
+    createdAt: new Date().toISOString(),
+    data: {
+      name: '李飞行',
+      idCard: '44010119900101XXXX',
+      certId: 'GA-PILOT-888',
+      licenseId: 'LIC-GA-123456',
+      expiryDate: '2030-01-01',
+      aircraftType: '单发陆地'
+    }
+  }
+]);
 
 // Methods
 const handleLoginSuccess = (type: 'individual' | 'enterprise') => {
@@ -564,48 +622,119 @@ const handleTakeoffFlowRedirect = (data: any) => {
 };
 
 const handleRequestLanding = (takeoffRecord?: FlightApplication) => {
-  if (!takeoffRecord) {
-    // If called from grid, redirect to records and show tip
-    declarationView.value = 'records';
-    alert('请在申请记录中选择正在进行的飞行活动（飞行中状态）进行降落报告。');
-    return;
-  }
-
-  if (confirm(`是否对飞行记录 ${takeoffRecord.id} 进行降落报告？`)) {
-    // 1. Update takeoff record to completed
-    const tkfIndex = flightApplications.value.findIndex(a => a.id === takeoffRecord.id);
-    if (tkfIndex !== -1) {
-      flightApplications.value[tkfIndex].status = 'completed';
-    }
-    
-    // 2. Update original application to completed
-    const relatedId = takeoffRecord.relatedApplyId || takeoffRecord.relatedId;
-    if (relatedId) {
-      const appIndex = flightApplications.value.findIndex(a => a.id === relatedId);
-      if (appIndex !== -1) {
-        flightApplications.value[appIndex].status = 'completed';
-      }
-    }
-    
-    // 3. Create landing record
-    const landingRecord: FlightApplication = {
-      id: `LDG-${Date.now()}`,
-      locationInfo: takeoffRecord.locationInfo,
-      formData: { ...takeoffRecord.formData, landingReportedAt: new Date().toISOString() },
-      status: 'completed',
-      submittedAt: new Date().toISOString(),
-      userType: userType.value,
-      businessType: 'uav-landing',
-      relatedId: takeoffRecord.id
-    };
-    flightApplications.value.unshift(landingRecord);
-    
-    alert('降落报告已提交，本次飞行任务已结束。');
-  }
+  selectedTakeoffForLanding.value = takeoffRecord || null;
+  currentNav.value = '降落报告办理';
+  declarationView.value = 'grid';
 };
 
-const handleFormBack = () => {
-  applicationStep.value = 'map';
+const handleLandingConfirm = (data: any) => {
+  const takeoffRecord = data.takeoffRecord;
+  const app = data.originalApp;
+  
+  selectedTakeoffForLanding.value = null;
+
+  // 1. Update takeoff record status to completed
+  const tkfIndex = flightApplications.value.findIndex(a => a.id === takeoffRecord.id);
+  if (tkfIndex !== -1) {
+    flightApplications.value[tkfIndex].status = 'completed';
+  }
+  
+  // 2. Update original application status to completed
+  const relatedId = takeoffRecord.relatedApplyId;
+  if (relatedId) {
+    const appIndex = flightApplications.value.findIndex(a => a.id === relatedId);
+    if (appIndex !== -1) {
+      flightApplications.value[appIndex].status = 'completed';
+    }
+  }
+  
+  // 3. Create landing record
+  const landingRecord: FlightApplication = {
+    id: `LDG-${Date.now()}`,
+    locationInfo: takeoffRecord.locationInfo,
+    formData: { 
+      ...takeoffRecord.formData, 
+      actualLandingTime: data.actualLandingTime,
+      missionStatus: data.missionStatus,
+      abnormalEvents: data.abnormalEvents
+    },
+    status: 'completed',
+    submittedAt: new Date().toISOString(),
+    userType: userType.value,
+    businessType: 'uav-landing',
+    relatedTakeoffId: takeoffRecord.id,
+    relatedApplyId: relatedId
+  };
+  flightApplications.value.unshift(landingRecord);
+  
+  currentNav.value = '飞行业务申报';
+  recordBusinessType.value = 'uav-landing';
+  declarationView.value = 'records';
+  
+  addNotification({
+    title: '降落报告提交成功',
+    content: `飞行活动 ${takeoffRecord.id} 已完成降落报告，任务结束。`,
+    type: 'success'
+  });
+  
+  alert('降落报告已提交，飞行任务已结束。');
+};
+
+const handleOpenGA_AirspaceFlow = () => {
+  // Check qualification first
+  const gaCorp = certInstances.value.find(i => i.category === '通航飞行企业认证' && i.status === 'approved');
+  if (!gaCorp) {
+    alert('仅对已完成通航企业资质认证的企业用户开放。请先前往“资质认证”模块完成认证。');
+    currentNav.value = '资质认证';
+    certView.value = 'categories';
+    return;
+  }
+  currentNav.value = '通航空域申请办理';
+  declarationView.value = 'grid';
+};
+
+const handleGA_AirspaceSubmit = (data: any) => {
+  // Create mock approval nodes
+  const nodes: GA_ApprovalNode[] = [
+    { name: '省低空数据融合中心', status: 'approved', time: new Date().toISOString(), comment: '数据同步成功，已分发至各服站' },
+    { name: '广州飞行服务站', status: 'processing' },
+    { name: '深圳飞行服务站', status: 'pending' },
+    { name: '珠海飞行服务站', status: 'pending' },
+    { name: '湛江飞行服务站', status: 'pending' },
+    { name: '相关军航系统', status: 'pending' },
+    { name: '相关民航系统', status: 'pending' }
+  ];
+
+  const newApplication: FlightApplication = {
+    id: `GA-AIR-${Date.now()}`,
+    businessType: 'ga-airspace',
+    status: 'processing',
+    submittedAt: new Date().toISOString(),
+    userType: userType.value,
+    locationInfo: {
+      coordinate: { lat: 200, lng: 300 },
+      address: 'GA 申请空域范围',
+      fss: { id: 'fss-gd', name: '广东省飞行服务站', type: 'provincial', description: '省直管' }
+    },
+    formData: data.formData,
+    approvalNodes: nodes
+  };
+
+  flightApplications.value.unshift(newApplication);
+  
+  addNotification({
+    title: '通航空域申请已提交',
+    content: `申请单 ${newApplication.id} 已同步至省低空数据融合中心，正在进行多方审批。`,
+    type: 'info'
+  });
+
+  alert('申请已提交，正在同步至各飞行服务站及军民航系统...');
+
+  setTimeout(() => {
+    currentNav.value = '飞行业务申报';
+    recordBusinessType.value = 'ga-airspace';
+    declarationView.value = 'records';
+  }, 1000);
 };
 
 const handleViewApplication = (app: FlightApplication) => {

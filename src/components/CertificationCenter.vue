@@ -221,7 +221,7 @@
                   </div>
                   <div class="flex-1">
                     <div class="flex justify-between mb-1">
-                      <span class="text-sm font-bold text-gray-700">省低空数据融合中心</span>
+                      <span class="text-sm font-bold text-gray-700">省智能网联数据融合中心</span>
                       <span :class="['text-xs font-medium', currentInstance.status === 'approved' ? 'text-green-600' : 'text-orange-600']">
                         {{ currentInstance.status === 'approved' ? '已同步' : '同步中' }}
                       </span>
@@ -340,7 +340,7 @@
           <ShieldCheck class="text-orange-600 mt-0.5" :size="18" />
           <div class="text-[10px] text-orange-800 leading-relaxed">
             <p class="font-bold mb-1">全省资质同源声明：</p>
-            您提交的信息将经过加密处理，实时推送至<strong>省低空数据融合中心</strong>，并同步至广州、深圳、珠海、粤东四个飞行服务站系统。请确保信息的准确性，虚假申报将影响您的信用等级。
+            您提交的信息将经过加密处理，实时推送至<strong>省智能网联数据融合中心</strong>，并同步至广州、深圳、珠海、粤东四个飞行服务站系统。请确保信息的准确性，虚假申报将影响您的信用等级。
           </div>
         </div>
 
@@ -566,7 +566,7 @@ const handleSubmit = () => {
       }
 
       modal.title = '同步成功';
-      modal.message = '您的备案信息已成功同步至全省低空数据融合中心及各飞行服务站。';
+      modal.message = '您的备案信息已成功同步至全省智能网联数据融合中心及各飞行服务站。';
       modal.type = 'info';
       modal.show = true;
       

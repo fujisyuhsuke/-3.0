@@ -71,7 +71,7 @@
       </section>
 
       <!-- GA Section -->
-      <section>
+      <section v-if="userType === 'enterprise'">
         <div class="flex items-center gap-2 mb-6">
           <div class="w-1 h-5 bg-indigo-600 rounded-full"></div>
           <h3 class="text-lg font-bold text-gray-800">通航业务申报</h3>
@@ -79,21 +79,11 @@
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
-          <!-- Permission Overlay for Individuals -->
-          <div v-if="userType === 'individual'" class="absolute inset-0 z-20 bg-gray-50/40 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-gray-200">
-            <div class="bg-white p-4 rounded-full shadow-lg mb-4">
-              <Lock :size="32" class="text-gray-400" />
-            </div>
-            <p class="text-sm font-bold text-gray-600">仅对已完成资质认证的通航企业开放</p>
-            <button class="mt-4 text-xs text-blue-600 font-bold hover:underline">前往企业资质认证</button>
-          </div>
-
           <div 
             v-for="item in gaItems" 
             :key="item.id"
             @click="handleAction(item)"
-            :class="['group bg-white p-6 rounded-2xl border border-gray-100 shadow-sm transition-all relative overflow-hidden', 
-              userType === 'enterprise' ? 'hover:shadow-xl hover:border-indigo-200 cursor-pointer' : 'opacity-50 grayscale cursor-not-allowed']"
+            class="group bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-indigo-200 cursor-pointer relative overflow-hidden"
           >
             <div class="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
               <component :is="item.icon" :size="120" />
@@ -108,9 +98,9 @@
               <p class="text-xs text-gray-500 leading-relaxed">{{ item.desc }}</p>
             </div>
 
-            <div v-if="userType === 'enterprise'" class="mt-6 flex items-center text-xs font-bold text-indigo-600 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0">
-            立即办理 <ArrowRight :size="14" class="ml-1" />
-          </div>
+            <div class="mt-6 flex items-center text-xs font-bold text-indigo-600 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0">
+              立即办理 <ArrowRight :size="14" class="ml-1" />
+            </div>
           </div>
         </div>
       </section>
@@ -162,7 +152,7 @@ const props = defineProps<{
   defaultBusinessType?: BusinessType;
 }>();
 
-const emit = defineEmits(['request-uav-apply', 'view-application', 'copy-application', 'request-takeoff', 'request-landing']);
+const emit = defineEmits(['request-uav-apply', 'request-ga-airspace', 'view-application', 'copy-application', 'request-takeoff', 'request-landing']);
 
 const activeTab = ref('apply');
 const selectedRecordType = ref<BusinessType>(props.defaultBusinessType || 'uav-apply');
@@ -191,6 +181,8 @@ const handleAction = (item: any) => {
     emit('request-takeoff');
   } else if (item.id === 'uav-landing') {
     emit('request-landing');
+  } else if (item.id === 'ga-airspace') {
+    emit('request-ga-airspace');
   } else {
     console.log('Action triggered:', item.id);
   }

@@ -5,8 +5,8 @@
         <img src="https://picsum.photos/seed/guangdong-uav/100/100" alt="Logo" class="w-full h-full object-cover" referrerPolicy="no-referrer" />
       </div>
       <div>
-        <h1 class="text-xl font-bold text-gray-800 tracking-tight">广东省低空飞行综合管理平台</h1>
-        <p class="text-[10px] text-gray-400 uppercase tracking-widest">Guangdong Low-altitude Flight Management Platform</p>
+        <h1 class="text-xl font-bold text-gray-800 tracking-tight">广东省智能网联平台</h1>
+        <p class="text-[10px] text-gray-400 uppercase tracking-widest">Guangdong Intelligent Connected Platform</p>
       </div>
     </div>
     <div class="flex items-center gap-6">
