@@ -134,47 +134,75 @@
     <div v-else-if="activeTab === 'records'">
       <FlightApplicationRecords 
         :applications="applications"
-        :businessType="'uav-apply'"
+        :business-type="selectedRecordType"
         :userType="userType"
         @back="activeTab = 'apply'"
         @view-application="handleViewApplication"
         @copy-application="handleCopyApplication"
+        @request-takeoff="handleRequestTakeoff"
+        @request-landing="handleRequestLanding"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { 
   Send, Navigation, CheckCircle, Map, Wind, ClipboardCheck, 
   ArrowRight, ShieldCheck, Lock, Info 
 } from 'lucide-vue-next';
 import FlightApplicationRecords from './FlightApplicationRecords.vue';
-
-interface FlightApplication {
-  id: string;
-  locationInfo: any;
-  formData: any;
-  status: 'pending' | 'processing' | 'approved' | 'rejected';
-  submittedAt: string;
-  userType: 'individual' | 'enterprise';
-}
+import { FlightApplication, UserType, BusinessType } from '../types';
 
 const props = defineProps<{
-  userType: 'individual' | 'enterprise';
+  userType: UserType;
   applications: FlightApplication[];
   showRecords?: boolean;
+  defaultBusinessType?: BusinessType;
 }>();
 
-// Watch for showRecords prop change
-if (props.showRecords) {
-  activeTab.value = 'records';
-}
-
-const emit = defineEmits(['request-uav-apply', 'view-application', 'copy-application']);
+const emit = defineEmits(['request-uav-apply', 'view-application', 'copy-application', 'request-takeoff', 'request-landing']);
 
 const activeTab = ref('apply');
+const selectedRecordType = ref<BusinessType>(props.defaultBusinessType || 'uav-apply');
+
+// Watch for showRecords prop change
+watch(() => props.showRecords, (newVal) => {
+  if (newVal) {
+    activeTab.value = 'records';
+    if (props.defaultBusinessType) {
+      selectedRecordType.value = props.defaultBusinessType;
+    }
+  }
+}, { immediate: true });
+
+// Also watch defaultBusinessType directly
+watch(() => props.defaultBusinessType, (newVal) => {
+  if (newVal) {
+    selectedRecordType.value = newVal;
+  }
+});
+
+const handleAction = (item: any) => {
+  if (item.id === 'uav-apply') {
+    emit('request-uav-apply');
+  } else if (item.id === 'uav-takeoff') {
+    emit('request-takeoff');
+  } else if (item.id === 'uav-landing') {
+    emit('request-landing');
+  } else {
+    console.log('Action triggered:', item.id);
+  }
+};
+
+const handleRequestTakeoff = (app: FlightApplication) => {
+  emit('request-takeoff', app);
+};
+
+const handleRequestLanding = (app: FlightApplication) => {
+  emit('request-landing', app);
+};
 
 const uavItems = [
   { 
@@ -216,14 +244,6 @@ const gaItems = [
     colorClass: 'bg-violet-50 text-violet-600'
   },
 ];
-
-const handleAction = (item: any) => {
-  if (item.id === 'uav-apply') {
-    emit('request-uav-apply');
-  } else {
-    console.log('Action triggered:', item.id);
-  }
-};
 
 const handleViewApplication = (app: FlightApplication) => {
   emit('view-application', app);

@@ -6,20 +6,6 @@
         <h2 class="text-2xl font-bold text-gray-800">
           欢迎回来，{{ userType === 'enterprise' ? '广东某航测技术有限公司' : '张三' }}
         </h2>
-        <div class="flex items-center gap-3 mt-1">
-          <span class="text-sm text-gray-500">
-            {{ userType === 'enterprise' ? '企业信用等级：' : '您当前的实名等级：' }}
-          </span>
-          <span :class="['px-2 py-0.5 text-[10px] font-bold rounded uppercase', userType === 'enterprise' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700']">
-            {{ userType === 'enterprise' ? 'AAA 级信用企业' : 'L3 高级认证' }}
-          </span>
-        </div>
-      </div>
-      <div class="flex gap-4">
-        <button @click="$emit('request-flight')" class="px-6 py-2.5 bg-blue-700 text-white font-bold rounded-lg shadow-lg shadow-blue-100 hover:bg-blue-800 transition-all flex items-center gap-2">
-          <UserPlus :size="18" />
-          {{ userType === 'enterprise' ? '批量发起申请' : '发起飞行申请' }}
-        </button>
       </div>
     </div>
 
@@ -37,60 +23,34 @@
     </div>
 
     <!-- Main Dashboard Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <!-- Left Column: Recent Records -->
-      <div class="lg:col-span-2 space-y-8">
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-            <h3 class="font-bold text-gray-800 flex items-center gap-2">
-              <FileText :size="18" class="text-blue-600" />
-              最近飞行申请记录
-            </h3>
-            <button class="text-sm text-blue-600 hover:underline">查看全部</button>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-              <thead>
-                <tr class="bg-gray-50 text-gray-500 font-medium">
-                  <th class="px-6 py-3">申请编号</th>
-                  <th class="px-6 py-3">飞行类型</th>
-                  <th class="px-6 py-3">申请时间</th>
-                  <th class="px-6 py-3">状态</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr v-for="(row, i) in recentRecords" :key="i" class="hover:bg-gray-50 transition-colors">
-                  <td class="px-6 py-4 font-mono text-xs text-blue-600">{{ row.id }}</td>
-                  <td class="px-6 py-4 font-medium">{{ row.type }}</td>
-                  <td class="px-6 py-4 text-gray-500">{{ row.time }}</td>
-                  <td :class="['px-6 py-4 font-bold', row.statusColor]">{{ row.status }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Column: Quick Actions & Info -->
-      <div class="space-y-6">
-        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Smartphone :size="18" class="text-orange-500" />
-            快捷办理
+    <div class="space-y-8">
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+          <h3 class="font-bold text-gray-800 flex items-center gap-2">
+            <FileText :size="18" class="text-blue-600" />
+            最近飞行申请记录
           </h3>
-          <div class="grid grid-cols-2 gap-3">
-            <button 
-              v-for="(item, i) in quickActions" 
-              :key="i" 
-              @click="item.label === '飞行活动申请' && $emit('request-flight')"
-              :class="['flex flex-col items-center justify-center p-4 rounded-lg transition-all border group', item.primary ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700 shadow-md shadow-blue-100' : 'bg-gray-50 text-gray-600 border-transparent hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100']"
-            >
-              <div :class="[item.primary ? 'text-blue-100' : 'text-gray-400 group-hover:text-blue-600', 'mb-2']">
-                <component :is="item.icon" :size="16" />
-              </div>
-              <span class="text-xs font-medium">{{ item.label }}</span>
-            </button>
-          </div>
+          <button class="text-sm text-blue-600 hover:underline">查看全部</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="bg-gray-50 text-gray-500 font-medium">
+                <th class="px-6 py-3">申请编号</th>
+                <th class="px-6 py-3">飞行类型</th>
+                <th class="px-6 py-3">申请时间</th>
+                <th class="px-6 py-3">状态</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr v-for="(row, i) in recentRecords" :key="i" class="hover:bg-gray-50 transition-colors">
+                <td class="px-6 py-4 font-mono text-xs text-blue-600">{{ row.id }}</td>
+                <td class="px-6 py-4 font-medium">{{ row.type }}</td>
+                <td class="px-6 py-4 text-gray-500">{{ row.time }}</td>
+                <td :class="['px-6 py-4 font-bold', row.statusColor]">{{ row.status }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -134,19 +94,6 @@ const recentRecords = [
 ];
 
 const quickActions = computed(() => {
-  if (props.userType === 'enterprise') {
-    return [
-      { label: '飞行活动申请', icon: MapPin, primary: true },
-      { label: '飞手入库', icon: UserPlus },
-      { label: '机队登记', icon: Plane },
-      { label: '资质年审', icon: ShieldCheck },
-    ];
-  }
-  return [
-    { label: '飞行活动申请', icon: MapPin, primary: true },
-    { label: '实名登记', icon: UserPlus },
-    { label: '计划申报', icon: FileText },
-    { label: '违规查询', icon: AlertCircle },
-  ];
+  return [];
 });
 </script>

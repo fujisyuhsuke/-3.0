@@ -55,6 +55,34 @@ export const judgeFSS = (coord: Coordinate): FSSInfo => {
 };
 
 /**
+ * 禁飞区判定逻辑 (Restricted Area Judge)
+ */
+export const checkRestrictedArea = (coord: Coordinate) => {
+  // 模拟禁飞区 (机场周边、政府核心区等)
+  const restrictedZones = [
+    { name: '广州白云机场禁飞区', lng: 113.30, lat: 23.39, radius: 0.15 },
+    { name: '深圳宝安机场禁飞区', lng: 113.81, lat: 22.62, radius: 0.12 },
+    { name: '珠海金湾机场禁飞区', lng: 113.37, lat: 22.01, radius: 0.10 },
+    { name: '省政府核心敏感区', lng: 113.26, lat: 23.13, radius: 0.05 }
+  ];
+
+  for (const zone of restrictedZones) {
+    const distance = Math.sqrt(
+      Math.pow(coord.lng - zone.lng, 2) + Math.pow(coord.lat - zone.lat, 2)
+    );
+    if (distance < zone.radius) {
+      return {
+        isRestricted: true,
+        reason: zone.name,
+        type: 'no-fly'
+      };
+    }
+  }
+
+  return { isRestricted: false };
+};
+
+/**
  * 进度同步器 (Progress Synchronizer)
  * 
  * 处理外部系统（广深珠）返回后的状态更新。

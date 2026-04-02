@@ -3,8 +3,8 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">{{ getBusinessTypeTitle(businessType) }}记录</h2>
-        <p class="text-sm text-gray-500 mt-1">查看和管理您的{{ getBusinessTypeTitle(businessType) }}记录</p>
+        <h2 class="text-2xl font-bold text-gray-800">{{ getBusinessTypeTitle(selectedBusinessType) }}记录</h2>
+        <p class="text-sm text-gray-500 mt-1">查看和管理您的{{ getBusinessTypeTitle(selectedBusinessType) }}记录</p>
       </div>
       <button 
         @click="$emit('back')"
@@ -50,29 +50,37 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
             <div class="flex items-center gap-2 mb-1">
-              <span class="text-sm font-bold text-gray-800">{{ getApplicationTypeText(app.formData.applicationType) }}</span>
-              <span 
-                :class="[
-                  'text-xs font-bold px-2 py-1 rounded-full',
-                  app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  app.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                  app.status === 'approved' ? 'bg-green-100 text-green-800' :
-                  'bg-red-100 text-red-800'
-                ]"
-              >
-                {{ getStatusText(app.status) }}
-              </span>
+              <!-- Removed application type and status spans -->
             </div>
             <p class="text-xs text-gray-500">
               申请编号：{{ app.id }} | 提交时间：{{ formatDate(app.submittedAt) }}
             </p>
           </div>
-          <button 
-            @click="viewApplication(app)"
-            class="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"
-          >
-            查看详情
-          </button>
+          <div class="flex items-center gap-2">
+            <button 
+              @click="viewApplication(app)"
+              class="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"
+            >
+              查看详情
+            </button>
+            <!-- Lifecycle Actions -->
+            <button 
+              v-if="app.businessType === 'uav-apply' && app.status === 'approved'"
+              @click="$emit('request-takeoff', app)"
+              class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1"
+            >
+              <Navigation :size="14" />
+              起飞确认
+            </button>
+            <button 
+              v-if="app.businessType === 'uav-takeoff' && app.status === 'active'"
+              @click="$emit('request-landing', app)"
+              class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center gap-1"
+            >
+              <CheckCircle :size="14" />
+              降落报告
+            </button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -111,48 +119,53 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { FileText, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-vue-next';
-
-interface FlightApplication {
-  id: string;
-  locationInfo: any;
-  formData: any;
-  status: 'pending' | 'processing' | 'approved' | 'rejected';
-  submittedAt: string;
-  userType: 'individual' | 'enterprise';
-  businessType: 'uav-apply' | 'uav-takeoff' | 'uav-landing' | 'ga-airspace' | 'ga-apply';
-}
+import { ref, computed, watch } from 'vue';
+import { FileText, ChevronLeft, ChevronRight, ArrowLeft, Navigation, CheckCircle } from 'lucide-vue-next';
+import { FlightApplication, UserType, BusinessType, ApplicationStatus } from '../types';
 
 const props = defineProps<{
   applications: FlightApplication[];
-  businessType: 'uav-apply' | 'uav-takeoff' | 'uav-landing' | 'ga-airspace' | 'ga-apply';
-  userType: 'individual' | 'enterprise';
+  businessType: BusinessType;
+  userType: UserType;
 }>();
 
-const emit = defineEmits(['back', 'view-application', 'copy-application']);
+const emit = defineEmits(['back', 'view-application', 'copy-application', 'request-takeoff', 'request-landing']);
 
-const selectedBusinessType = ref(props.businessType);
+const selectedBusinessType = ref<BusinessType>(props.businessType);
 
-const businessTypes = [
-  { value: 'uav-apply', label: '飞行活动申请' },
-  { value: 'uav-takeoff', label: '起飞确认' },
-  { value: 'uav-landing', label: '降落报告' },
-  { value: 'ga-airspace', label: '通航空域申请' },
-  { value: 'ga-apply', label: '通航飞行活动申请' }
-];
+// Update selectedBusinessType when prop changes
+watch(() => props.businessType, (newVal) => {
+  selectedBusinessType.value = newVal;
+});
+
+const businessTypes = computed(() => {
+  const types: { value: BusinessType; label: string }[] = [
+    { value: 'uav-apply', label: '飞行活动申请' },
+    { value: 'uav-takeoff', label: '起飞确认' },
+    { value: 'uav-landing', label: '降落报告' }
+  ];
+
+  if (props.userType === 'enterprise') {
+    types.push(
+      { value: 'ga-airspace', label: '通航空域申请' },
+      { value: 'ga-apply', label: '通航飞行活动申请' }
+    );
+  }
+
+  return types;
+});
 
 const filteredApplications = computed(() => {
   return props.applications.filter(app => app.businessType === selectedBusinessType.value);
 });
 
-const getBusinessTypeTitle = (type: string) => {
-  const typeMap: Record<string, string> = {
+const getBusinessTypeTitle = (type: BusinessType) => {
+  const typeMap: Record<BusinessType, string> = {
     'uav-apply': '飞行活动申请',
     'uav-takeoff': '起飞确认',
     'uav-landing': '降落报告',
     'ga-airspace': '通航空域申请',
-    'ga-apply': '通航飞行活动申请'
+    'ga-apply': '通航飞行计划'
   };
   return typeMap[type] || type;
 };
@@ -167,14 +180,28 @@ const getApplicationTypeText = (type: string) => {
   return typeMap[type] || type;
 };
 
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
+const getStatusText = (status: ApplicationStatus) => {
+  const statusMap: Record<ApplicationStatus, string> = {
     pending: '待处理',
     processing: '处理中',
     approved: '已批准',
-    rejected: '已拒绝'
+    rejected: '已拒绝',
+    active: '飞行中',
+    completed: '已结束'
   };
   return statusMap[status] || status;
+};
+
+const getStatusClass = (status: ApplicationStatus) => {
+  switch (status) {
+    case 'pending': return 'bg-yellow-100 text-yellow-800';
+    case 'processing': return 'bg-blue-100 text-blue-800';
+    case 'approved': return 'bg-green-100 text-green-800';
+    case 'active': return 'bg-indigo-100 text-indigo-800';
+    case 'completed': return 'bg-gray-100 text-gray-800';
+    case 'rejected': return 'bg-red-100 text-red-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
 };
 
 const formatDate = (dateString: string) => {

@@ -28,11 +28,11 @@
 
         <!-- Schematic SVG Map -->
         <div class="w-full h-full max-w-4xl max-h-[600px] relative">
-          <svg viewBox="0 0 800 500" class="w-full h-full drop-shadow-2xl filter transition-all duration-500">
+          <svg viewBox="0 0 800 500" class="w-full h-full drop-shadow-2xl filter transition-all duration-500" @click="handleMapClick">
             <!-- Main Guangdong Background (Provincial Direct) -->
             <path 
               d="M150,350 L100,300 L120,200 L250,100 L450,80 L650,120 L750,250 L700,350 L600,400 L450,420 L300,450 L150,350 Z" 
-              @click="selectFSSByZone('provincial')"
+              @click.stop="selectFSSByZone('provincial')"
               :class="['transition-all duration-300 cursor-pointer stroke-white stroke-2', 
                 selectedLocation?.fss.id === 'fss-gd' ? 'fill-slate-400' : 'fill-slate-200 hover:fill-slate-300']"
             />
@@ -64,11 +64,17 @@
             />
             <text x="415" y="370" class="pointer-events-none text-[12px] font-bold fill-teal-900/40 text-center" text-anchor="middle">珠海</text>
 
+            <!-- Restricted Areas (Visual Only) -->
+            <g v-for="zone in restrictedZones" :key="zone.name" class="pointer-events-none">
+              <circle :cx="zone.x" :cy="zone.y" :r="zone.r" fill="rgba(239, 68, 68, 0.15)" stroke="rgba(239, 68, 68, 0.4)" stroke-width="1" stroke-dasharray="2,2" />
+              <circle :cx="zone.x" :cy="zone.y" r="2" fill="rgba(239, 68, 68, 0.5)" />
+            </g>
+
             <!-- Selection Indicator (Pin) -->
             <g v-if="selectedLocation" :transform="`translate(${pinPos.x}, ${pinPos.y})`" class="pointer-events-none transition-all duration-500">
-              <circle r="8" fill="white" class="animate-ping opacity-75" />
-              <circle r="4" fill="#ef4444" />
-              <path d="M0,0 L-8,-20 A8,8 0 1,1 8,-20 Z" fill="#ef4444" transform="translate(0, 5)" />
+              <circle r="8" :fill="restrictedInfo?.isRestricted ? '#ef4444' : 'white'" class="animate-ping opacity-75" />
+              <circle r="4" :fill="restrictedInfo?.isRestricted ? '#ef4444' : '#ef4444'" />
+              <path d="M0,0 L-8,-20 A8,8 0 1,1 8,-20 Z" :fill="restrictedInfo?.isRestricted ? '#ef4444' : '#ef4444'" transform="translate(0, 5)" />
             </g>
           </svg>
         </div>
@@ -114,19 +120,25 @@
             </div>
             
             <div v-else class="space-y-4 animate-in fade-in slide-in-from-right-4">
-              <div class="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+              <div :class="['p-4 rounded-2xl border transition-all', restrictedInfo?.isRestricted ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100']">
                 <div class="flex items-center gap-2 mb-2">
-                  <MapPin :size="14" class="text-blue-600" />
-                  <span class="text-xs font-bold text-blue-800">已选起飞点</span>
+                  <MapPin :size="14" :class="restrictedInfo?.isRestricted ? 'text-red-600' : 'text-blue-600'" />
+                  <span class="text-xs font-bold" :class="restrictedInfo?.isRestricted ? 'text-red-800' : 'text-blue-800'">
+                    {{ restrictedInfo?.isRestricted ? '禁飞区警告' : '已选起飞点' }}
+                  </span>
                 </div>
-                <p class="text-sm font-medium text-gray-800 leading-relaxed">{{ selectedLocation.address }}</p>
-                <div class="mt-3 pt-3 border-t border-blue-100 flex justify-between items-center">
-                  <span class="text-[10px] text-blue-600 font-mono">{{ selectedLocation.coordinate.lng.toFixed(6) }}, {{ selectedLocation.coordinate.lat.toFixed(6) }}</span>
+                <p class="text-sm font-medium leading-relaxed" :class="restrictedInfo?.isRestricted ? 'text-red-900' : 'text-gray-800'">
+                  {{ restrictedInfo?.isRestricted ? `该位置位于【${restrictedInfo.reason}】范围内，禁止申报飞行活动。` : selectedLocation.address }}
+                </p>
+                <div class="mt-3 pt-3 border-t flex justify-between items-center" :class="restrictedInfo?.isRestricted ? 'border-red-100' : 'border-blue-100'">
+                  <span class="text-[10px] font-mono" :class="restrictedInfo?.isRestricted ? 'text-red-600' : 'text-blue-600'">
+                    {{ selectedLocation.coordinate.lng.toFixed(6) }}, {{ selectedLocation.coordinate.lat.toFixed(6) }}
+                  </span>
                   <button @click="clearSelection" class="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase transition-colors">清除</button>
                 </div>
               </div>
 
-              <div :class="['p-4 rounded-2xl border transition-all', selectedLocation.fss.type === 'city' ? 'bg-orange-50 border-orange-100' : 'bg-emerald-50 border-emerald-100']">
+              <div v-if="!restrictedInfo?.isRestricted" :class="['p-4 rounded-2xl border transition-all', selectedLocation.fss.type === 'city' ? 'bg-orange-50 border-orange-100' : 'bg-emerald-50 border-emerald-100']">
                 <div class="flex items-center gap-2 mb-2">
                   <component :is="selectedLocation.fss.type === 'city' ? 'Building2' : 'Globe'" :size="14" :class="selectedLocation.fss.type === 'city' ? 'text-orange-600' : 'text-emerald-600'" />
                   <span class="text-xs font-bold" :class="selectedLocation.fss.type === 'city' ? 'text-orange-800' : 'text-emerald-800'">
@@ -164,11 +176,11 @@
           <div class="pt-4">
             <button 
               @click="handleNext"
-              :disabled="!selectedLocation"
+              :disabled="!selectedLocation || restrictedInfo?.isRestricted"
               :class="['w-full py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg', 
-                selectedLocation ? 'bg-blue-700 text-white hover:bg-blue-800 shadow-blue-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none']"
+                (selectedLocation && !restrictedInfo?.isRestricted) ? 'bg-blue-700 text-white hover:bg-blue-800 shadow-blue-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none']"
             >
-              <span>{{ selectedLocation?.fss.type === 'city' ? '跳转至市级系统办理' : '进入下一步填报' }}</span>
+              <span>{{ restrictedInfo?.isRestricted ? '当前位置禁止申报' : (selectedLocation?.fss.type === 'city' ? '跳转至市级系统办理' : '进入下一步填报') }}</span>
               <ArrowRight :size="18" />
             </button>
             <p class="text-[10px] text-gray-400 text-center mt-4 leading-relaxed">
@@ -188,7 +200,7 @@ import {
   ShieldCheck, ShieldAlert 
 } from 'lucide-vue-next';
 import { LocationSelection } from '../types';
-import { judgeFSS, getPreFilledData } from '../services/flightTools';
+import { judgeFSS, getPreFilledData, checkRestrictedArea } from '../services/flightTools';
 
 const props = defineProps<{
   userType: 'individual' | 'enterprise'
@@ -197,9 +209,17 @@ const props = defineProps<{
 const emit = defineEmits(['back', 'next']);
 
 const selectedLocation = ref<LocationSelection | null>(null);
+const restrictedInfo = ref<{ isRestricted: boolean; reason?: string } | null>(null);
 const preFilledDataRaw = getPreFilledData(props.userType);
 
 const pinPos = reactive({ x: 0, y: 0 });
+
+const restrictedZones = [
+  { name: '广州白云机场禁飞区', x: 410, y: 180, r: 30 },
+  { name: '深圳宝安机场禁飞区', x: 450, y: 350, r: 25 },
+  { name: '珠海金湾机场禁飞区', x: 400, y: 400, r: 20 },
+  { name: '省政府核心敏感区', x: 410, y: 260, r: 15 }
+];
 
 const preFilledData = computed(() => {
   if (props.userType === 'individual') {
@@ -235,9 +255,11 @@ const selectFSSByZone = (zone: 'guangzhou' | 'shenzhen' | 'zhuhai' | 'provincial
 
   const coord = { lng, lat };
   const fss = judgeFSS(coord);
+  const restricted = checkRestrictedArea(coord);
   
   pinPos.x = x;
   pinPos.y = y;
+  restrictedInfo.value = restricted;
 
   selectedLocation.value = {
     coordinate: coord,
@@ -246,8 +268,39 @@ const selectFSSByZone = (zone: 'guangzhou' | 'shenzhen' | 'zhuhai' | 'provincial
   };
 };
 
+const handleMapClick = (event: MouseEvent) => {
+  const svg = event.currentTarget as SVGSVGElement;
+  const pt = svg.createSVGPoint();
+  pt.x = event.clientX;
+  pt.y = event.clientY;
+  const cursorpt = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+  
+  pinPos.x = cursorpt.x;
+  pinPos.y = cursorpt.y;
+
+  // Simulate coordinate calculation based on SVG position
+  const lng = 110 + (cursorpt.x / 800) * 8;
+  const lat = 20 + (1 - cursorpt.y / 500) * 6;
+  const coord = { lng, lat };
+  
+  const fss = judgeFSS(coord);
+  const restricted = checkRestrictedArea(coord);
+  
+  restrictedInfo.value = restricted;
+  selectedLocation.value = {
+    coordinate: coord,
+    address: `经纬度拾取点 (${lng.toFixed(4)}, ${lat.toFixed(4)})`,
+    fss
+  };
+};
+
+const clearSelection = () => {
+  selectedLocation.value = null;
+  restrictedInfo.value = null;
+};
+
 const handleNext = () => {
-  if (selectedLocation.value) {
+  if (selectedLocation.value && !restrictedInfo.value?.isRestricted) {
     emit('next', selectedLocation.value);
   }
 };
